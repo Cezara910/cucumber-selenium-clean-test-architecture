@@ -1,0 +1,94 @@
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.time.LocalDateTime
+
+plugins {
+    id 'java'
+    id 'idea'
+    id "io.qameta.allure" version "2.12.0"
+}
+def allureVersion = "2.29.0"
+def allureReportDir = project.reporting.baseDirectory.dir("allure-report/${LocalDateTime.now().toString()}")
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+configurations {
+    customConfig.extendsFrom implementation
+}
+
+allure {
+    report {
+        reportDir.set(allureReportDir)
+    }
+}
+
+dependencies {
+    // TestNG
+    testImplementation 'org.testng:testng:7.10.2'
+
+    // Cucumber
+    implementation 'io.cucumber:cucumber-java:7.20.1'
+    implementation 'io.cucumber:cucumber-core:7.20.1'
+    implementation 'io.cucumber:cucumber-picocontainer:7.20.1'
+    implementation 'io.cucumber:cucumber-testng:7.20.1'
+
+    // Selenium
+    implementation 'org.seleniumhq.selenium:selenium-java:4.25.0'
+    // Configuration Manager
+    // https://mvnrepository.com/artifact/org.aeonbits.owner/owner
+    implementation 'org.aeonbits.owner:owner:1.0.12'
+    // WebDriverManager
+    implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
+    // Test Containers
+    implementation 'org.testcontainers:testcontainers:1.20.3'
+    implementation 'org.testcontainers:selenium:1.20.3'
+
+    // Allure reports
+    implementation platform("io.qameta.allure:allure-bom:$allureVersion")
+    implementation "io.qameta.allure:allure-cucumber7-jvm"
+    implementation "io.qameta.allure:allure-testng"
+
+    // DataFaker
+    // https://mvnrepository.com/artifact/net.datafaker/datafaker
+    implementation 'net.datafaker:datafaker:2.4.2'
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation 'org.slf4j:slf4j-api:2.0.16'
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-reload4j
+    testImplementation 'org.slf4j:slf4j-reload4j:2.0.16'
+
+
+
+
+}
+
+
+def testRunner = '**/WebTestRunner*'
+def webTestFeatureFilesPath = 'src/test/resources/features/'
+
+
+tasks.withType(Test) {
+    useTestNG()
+    dependsOn cleanTest
+    testLogging{
+        showStandardStreams = true
+    }
+    systemProperties System.getProperties()
+    finalizedBy tasks.named("allureReport")
+}
+
+tasks.register("sanity", Test) {
+    systemProperty("cucumber.features", webTestFeatureFilesPath + "login")
+    systemProperty("cucumber.filter.tags", "@sanity")
+    include testRunner
+}
+task deleteReports {
+    doLast {
+        delete fileTree(dir: project.reporting.baseDirectory.dir("allure-report"))
+        println "Deleted allure-report directory."
+    }
+}
+
